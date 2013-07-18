@@ -1,14 +1,13 @@
 VSN := $(shell erl -eval 'io:format("~s~n", [erlang:system_info(otp_release)]), init:stop().' | grep 'R' | sed -e 's,R\(..\)B.*,\1,')
-NEW_HASH := $(shell expr $(VSN) \>= 16)
+OLD_HASH := $(shell expr $(VSN) \<= 15)
+ifeq ($(OLD_HASH),1)
+hash := "-Dold_hash"
+endif
 
 all: deps compile
 
 compile:
-ifeq ($(NEW_HASH),1)
-	@./rebar compile -Dnew_hash escriptize
-else
-	@./rebar compile escriptize
-endif
+	@./rebar compile $(hash) escriptize
 
 deps:
 	@./rebar get-deps
