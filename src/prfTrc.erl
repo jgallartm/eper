@@ -100,8 +100,16 @@ remote_stop(Consumer, LD) ->
   stop_trace(LD),
   consumer_stop(Consumer).
 
+erlang_trace_pattern(A, B, C)->
+    io:format("erlang:trace_pattern(~p, ~p, ~p)\n", [A, B, C]),
+    erlang:trace_pattern(A, B, C).
+
+erlang_trace(A, B, C)->
+    io:format("erlang:trace(~p, ~p, ~p)\n", [A, B, C]),
+    erlang:trace(A, B, C).
+
 stop_trace(LD) ->
-  erlang:trace(all,false,fetch(flags,fetch(conf,LD))),
+  erlang_trace(all,false,fetch(flags,fetch(conf,LD))),
   unset_tps().
 
 start_trace(HostPid,Conf) ->
@@ -139,7 +147,7 @@ start_trace(LD) ->
   Procs = mk_prc(fetch(procs,Conf)),
   Flags = [{tracer,real_consumer(Consumer)}|fetch(flags,Conf)],
   unset_tps(),
-  erlang:trace(Procs,true,Flags),
+  erlang_trace(Procs,true,Flags),
   untrace(family(redbug)++family(prfTrc),Flags),
   set_tps(fetch(rtps,Conf)),
   store(consumer,Consumer,LD).
@@ -151,7 +159,7 @@ family(Daddy) ->
   end.
 
 untrace(Pids,Flags) ->
-  [try erlang:trace(P,false,Flags)
+  [try erlang_trace(P,false,Flags)
    catch _:R-> erlang:display({R,process_info(P),erlang:trace_info(P,flags)})
    end || P <- Pids,
           is_pid(P),
@@ -159,14 +167,14 @@ untrace(Pids,Flags) ->
           {flags,[]}=/=erlang:trace_info(P,flags)].
 
 unset_tps() ->
-  erlang:trace_pattern({'_','_','_'},false,[local]),
-  erlang:trace_pattern({'_','_','_'},false,[global]).
+  erlang_trace_pattern({'_','_','_'},false,[local]),
+  erlang_trace_pattern({'_','_','_'},false,[global]).
 
 set_tps(TPs) ->
   foreach(fun set_tps_f/1,TPs).
 
 set_tps_f({MFA,MatchSpec,Flags}) ->
-  erlang:trace_pattern(MFA,MatchSpec,Flags).
+  erlang_trace_pattern(MFA,MatchSpec,Flags).
 
 mk_prc(all) -> all;
 mk_prc(Pid) when is_pid(Pid) -> Pid;
