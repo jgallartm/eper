@@ -39,4 +39,6 @@ release_patch: test
 
 release: relase_patch
 
+DIALYZER_APPS = erts kernel stdlib crypto public_key inets eunit xmerl
+
 include tools.mk
