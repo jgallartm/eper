@@ -136,8 +136,12 @@ locals(M) ->
   case code:which(M) of
     preloaded -> [];
     F ->
-      {ok,{M,[{locals,Locals}]}} = beam_lib:chunks(F,[locals]),
-      Locals
+      case beam_lib:chunks(F,[locals]) of
+        {ok,{M,[{locals,Locals}]}} ->
+          Locals;
+        {error, beam_lib, {missing_chunk, _, _}} ->
+          []
+      end
   end.
 
 globals(M) ->
@@ -168,7 +172,7 @@ start_trace(LD) ->
   NoProcs = lists:sum([erlang:trace(P,true,Flags) || P <- Ps]),
   untrace(family(redbug)++family(prfTrc),Flags),
   NoFuncs = set_tps(Rtps),
-  assert_trace_targets(NoProcs,NoFuncs,Flags),
+  assert_trace_targets(NoProcs,NoFuncs,Flags,Ps),
   dict:fetch(host_pid,LD) ! {prfTrc,{starting,NoProcs,NoFuncs,self(),Consumer}},
   dict:store(consumer,Consumer,LD).
 
@@ -186,8 +190,8 @@ untrace(Pids,Flags) ->
           node(P)==node(),
           {flags,[]}=/=erlang:trace_info(P,flags)].
 
-assert_trace_targets(NoProcs,NoFuncs,Flags) ->
-  case 0 < NoProcs of
+assert_trace_targets(NoProcs,NoFuncs,Flags,Ps) ->
+  case 0 < NoProcs orelse is_new_pidspec(Ps) of
     true -> ok;
     false-> exit({prfTrc,no_matching_processes})
   end,
@@ -195,6 +199,9 @@ assert_trace_targets(NoProcs,NoFuncs,Flags) ->
     true -> ok;
     false-> exit({prfTrc,no_matching_functions})
   end.
+
+is_new_pidspec(Ps) ->
+  lists:member(new,Ps).
 
 is_message_trace(Flags) ->
   (lists:member(send,Flags) orelse lists:member('receive',Flags)).
@@ -209,8 +216,8 @@ set_tps(TPs) ->
 set_tps_f({MFA,MatchSpec,Flags},A) ->
   A+erlang:trace_pattern(MFA,MatchSpec,Flags).
 
-mk_prc(all,A) ->
-  [all|A];
+mk_prc(Ps,A) when Ps == running; Ps == all; Ps == new ->
+  [Ps|A];
 mk_prc(Reg,A) when is_atom(Reg) ->
   case whereis(Reg) of
     Pid when is_pid(Pid) -> mk_prc(Pid,A);

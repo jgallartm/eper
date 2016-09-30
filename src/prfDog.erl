@@ -33,8 +33,8 @@ collect(LD) ->
   {LD,{?MODULE,gen_server:call(?MODULE,get_data)}}.
 
 config(ports_opened,{port,Port}) when is_integer(Port) ->
-  gen_server:call(?MODULE,quit),
   Secret = proplists:get_value(secret,gen_server:call(?MODULE,state)),
+  gen_server:call(?MODULE,quit),
   gen_server:start_link({local,?MODULE},?MODULE,[],[]),
   config(config([],{secret,Secret}),{port,Port});
 config([],{port,Port}) when is_integer(Port) ->
@@ -110,7 +110,15 @@ handle_info({udp,Socket,_IP,_Port,Bin},LD) ->
   case Socket == LD#ld.udp_socket of
     true ->
       inet:setopts(Socket,[{active,once}]),
-      {noreply,decrypt(Bin,LD)};
+      <<PaySize:32,Payload/binary>> = Bin,
+      try
+        PaySize = byte_size(Payload),
+        {noreply,decrypt(Payload,LD)}
+      catch
+        _:R ->
+          ?log({decrypt_failed,R}),
+          {noreply,LD}
+      end;
     false ->
       %% got data from unknown socket. wtf?
       ?log([{unknown_socket,Socket},{bytes,byte_size(Bin)}]),
@@ -127,9 +135,7 @@ decrypt(Bin,LD) ->
       LD;
     Secret ->
       try
-        <<PaySize:32,Payload/binary>> = Bin,
-        PaySize = byte_size(Payload),
-        B = prf_crypto:decrypt(Secret,Payload),
+        B = prf_crypto:decrypt(Secret,Bin),
         {watchdog,Node,TS,Trig,Msg} = binary_to_term(B),
         LD#ld{msg=[{Node,TS,Trig,Msg}|LD#ld.msg]}
       catch
@@ -183,15 +189,32 @@ t0_test() ->
   watchdog:add_send_subscriber(16#babe,"localhost",Port,Secret),
   watchdog:message(troglodyte),
   watchdog:stop(),
-  poll(),
+  poll(dogC),
   ?assertMatch([{_,_,user,troglodyte}],
                prf:stop(dogC)),
-  prfDog:quit().
+  prf:stop(dogC).
 
-poll() ->
-  case prf:state(dogC) of
+t1_test() ->
+  Port = 16#dade,
+  Secret = "Passwd",
+  prf:start (dddd,node(),dogConsumer,node()),
+  prf:config(dddd,prfDog,{secret,Secret}),
+  prf:config(dddd,prfDog,{port,Port}),
+  watchdog:start(),
+  watchdog:delete_triggers(),
+  watchdog:add_trigger(user, true),
+  watchdog:add_send_subscriber(tcp,"localhost",Port,Secret),
+  watchdog:message(troglodyte),
+  watchdog:stop(),
+  poll(dddd),
+  ?assertMatch([{_,_,user,troglodyte}],
+               prf:stop(dddd)),
+  prf:stop(dddd).
+
+poll(I) ->
+  case prf:state(I) of
     {ld,[]} -> receive after 300 -> ok end,
-               poll();
+               poll(I);
     _ -> ok
   end.
 
