@@ -10,12 +10,13 @@ getopt_spec() ->
      {shortnames, $s,        "snames",   boolean,   "Use shortnames for connecting to remote node."}
     ].
 
+-spec usage() -> no_return().
 usage() ->
-    getoptw:usage(getopt_spec(), "eper"),
+    getopt:usage(getopt_spec(), "eper"),
     halt(1).
 
 parse_args(Args) ->
-    case getoptw:parse(getopt_spec(), Args) of
+    case getopt:parse(getopt_spec(), Args) of
         {ok, {Options, ArgsRest}} ->
             case lists:member(help, Options) of
                 true ->

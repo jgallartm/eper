@@ -17,6 +17,7 @@ read(FN) ->
   after file:close(FD)
   end.
 
+-spec read(file:io_device(), binary()) -> no_return().
 read(FD,Cont) ->
   case file:read(FD,1048576) of
     {ok,Bin}  -> read(FD,chop(<<Cont/binary,Bin/binary>>));
@@ -24,5 +25,6 @@ read(FD,Cont) ->
     {error,R} -> exit({error_reading,R})
   end.
 
+-spec chop(binary()) -> no_return().
 chop(<<Size:32,Bin:Size/binary,Size2:32,Bin2:Size2/binary,_/binary>>) ->
   throw({ok,binary_to_term(Bin),binary_to_term(Bin2)}).

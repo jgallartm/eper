@@ -14,6 +14,10 @@
 -define(is_string(Str),
         (Str=="" orelse (9=<hd(Str) andalso hd(Str)=<255))).
 
+%% The warning applies to a returned closure and I can't come up with a spec
+%% that will shut dialyzer up about it.
+-dialyzer({no_return, body_fun/1}).
+
 transform(E) ->
   compile(parse(to_string(E))).
 

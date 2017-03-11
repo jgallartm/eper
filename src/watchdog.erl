@@ -612,21 +612,23 @@ udp_port_test() ->
   ?assert(validate_recv(PR0,troglodyte)),
   watchdog:stop().
 
-delete_trigger_test() ->
-  watchdog:start(),
-  watchdog:config(timeout_release,0),
-  watchdog:delete_triggers(),
-  watchdog:add_trigger(user,true),
-  watchdog:delete_trigger(user),
-  PR0 = mk_receiver(udp),
-  watchdog:add_send_subscriber(udp,"localhost",16#dada,"PWD"),
-  watchdog:message(truffle),
-  ?assert(not validate_recv(PR0,truffle)),
-  watchdog:add_trigger(user,true),
-  PR1 = mk_receiver(udp),
-  watchdog:message(trifle),
-  ?assert(validate_recv(PR1,trifle)),
-  watchdog:stop().
+delete_trigger_test_() ->
+  {timeout, 30, fun() ->
+    watchdog:start(),
+    watchdog:config(timeout_release,0),
+    watchdog:delete_triggers(),
+    watchdog:add_trigger(user,true),
+    watchdog:delete_trigger(user),
+    PR0 = mk_receiver(udp),
+    watchdog:add_send_subscriber(udp,"localhost",16#dada,"PWD"),
+    watchdog:message(truffle),
+    ?assert(not validate_recv(PR0,truffle)),
+    watchdog:add_trigger(user,true),
+    PR1 = mk_receiver(udp),
+    watchdog:message(trifle),
+    ?assert(validate_recv(PR1,trifle)),
+    watchdog:stop()
+  end}.
 
 start_stop_test() ->
   watchdog:start(),

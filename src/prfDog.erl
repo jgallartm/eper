@@ -177,45 +177,76 @@ acceptor_loop(ListenSock) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-t0_test() ->
-  Port = 16#dada,
-  Secret = "PWD",
-  prf:start (dogC,node(),dogConsumer,node()),
-  prf:config(dogC,prfDog,{secret,Secret}),
-  prf:config(dogC,prfDog,{port,Port}),
-  watchdog:start(),
-  watchdog:delete_triggers(),
-  watchdog:add_trigger(user, true),
-  watchdog:add_send_subscriber(16#babe,"localhost",Port,Secret),
-  watchdog:message(troglodyte),
-  watchdog:stop(),
-  poll(dogC),
-  ?assertMatch([{_,_,user,troglodyte}],
-               prf:stop(dogC)),
-  prf:stop(dogC).
+t0_test_() ->
+    {setup,
+        fun test_setup/0,
+        fun test_cleanup/1,
+        {timeout, 30, fun() ->
+            Port = 16#dadc,
+            Secret = "PWD",
+            prf:start(dogC, node(), dogConsumer, node()),
+            prf:config(dogC, prfDog, {secret, Secret}),
+            prf:config(dogC, prfDog, {port, Port}),
+            watchdog:start(),
+            watchdog:delete_triggers(),
+            watchdog:add_trigger(user, true),
+            watchdog:add_send_subscriber(16#babe, "localhost", Port, Secret),
+            watchdog:message(troglodyte),
+            watchdog:stop(),
+            poll(dogC),
+            ?assertMatch([{_, _, user, troglodyte}], prf:stop(dogC)),
+            prf:stop(dogC)
+        end
+    }}.
 
 t1_test() ->
-  Port = 16#dade,
-  Secret = "Passwd",
-  prf:start (dddd,node(),dogConsumer,node()),
-  prf:config(dddd,prfDog,{secret,Secret}),
-  prf:config(dddd,prfDog,{port,Port}),
-  watchdog:start(),
-  watchdog:delete_triggers(),
-  watchdog:add_trigger(user, true),
-  watchdog:add_send_subscriber(tcp,"localhost",Port,Secret),
-  watchdog:message(troglodyte),
-  watchdog:stop(),
-  poll(dddd),
-  ?assertMatch([{_,_,user,troglodyte}],
-               prf:stop(dddd)),
-  prf:stop(dddd).
+    {setup,
+        fun test_setup/0,
+        fun test_cleanup/1,
+        {timeout, 30, fun() ->
+            Port = 16#dade,
+            Secret = "Passwd",
+            prf:start(dddd, node(), dogConsumer, node()),
+            prf:config(dddd, prfDog, {secret, Secret}),
+            prf:config(dddd, prfDog, {port, Port}),
+            watchdog:start(),
+            watchdog:delete_triggers(),
+            watchdog:add_trigger(user, true),
+            watchdog:add_send_subscriber(tcp, "localhost", Port, Secret),
+            watchdog:message(troglodyte),
+            watchdog:stop(),
+            poll(dddd),
+            ?assertMatch([{_, _, user, troglodyte}], prf:stop(dddd)),
+            prf:stop(dddd)
+        end
+    }}.
 
 poll(I) ->
-  case prf:state(I) of
-    {ld,[]} -> receive after 300 -> ok end,
-               poll(I);
-    _ -> ok
-  end.
+    case prf:state(I) of
+        {ld, []} ->
+            timer:sleep(300),
+            poll(I);
+        _ ->
+            ok
+    end.
 
--endif.
+test_setup() ->
+    case net_kernel:get_net_ticktime() of
+        ignored ->
+            % net_kernel isn't running
+            case net_kernel:start(['eper_test_node@127.0.0.1']) of
+                {ok, _} ->
+                    true;
+                _ ->
+                    false
+            end;
+        _ ->
+            false
+    end.
+
+test_cleanup(true) ->
+    net_kernel:stop();
+test_cleanup(_) ->
+    ok.
+
+-endif. % TEST
