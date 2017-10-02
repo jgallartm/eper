@@ -8,7 +8,7 @@
 -export([ts/0]).
 
 -ifdef(USE_NOW).
-ts() -> erlang:now().
+ts() -> erlang:erlang:timestamp().
 -else.
 ts() -> erlang:timestamp().
 -endif.

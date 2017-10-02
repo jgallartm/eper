@@ -22,7 +22,7 @@
 %%
 %% tag                  [unit]    source
 %% node                 [atom()]  erlang:node()
-%% now                  [now()]   prfTime:ts()
+%% now                  [erlang:timestamp()]   prfTime:ts()
 %% procs                [count]   erlang:system_info(process_count)
 %% context_switches     [count/s] erlang:statistics(context_switches)
 %% gcs                  [count/s] erlang:statistics(garbage_collection)
